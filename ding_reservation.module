@@ -642,9 +642,14 @@ function ding_reservation_update_reservations_form_callback($form, &$form_state)
  * Returns form element(s) for selecting a pickup branch.
  */
 function ding_reservation_default_options_branch($type, $name, $default, $options) {
+  global $user;
   $create = ($type == 'create');
   $allowed_branches = ($create ? array() : array('' => t('No change'))) + $options;
-  $default_value = $create ? $default : '';
+  $profile2 = profile2_load_by_user($user, 'provider_alma');
+  $langs = field_language('profile2', $profile2);
+  $lang = $langs['field_alma_preferred_branch'];
+  $default_branch = $profile2->field_alma_preferred_branch[$lang][0]['value'];
+  $default_value = $create ? $default_branch : '';
   $form[$name] = array(
     '#type' => 'select',
     '#title' => t('Select branch'),
