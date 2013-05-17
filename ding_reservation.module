@@ -78,11 +78,27 @@ function ding_reservation_ding_entity_buttons($type, $entity, $widget = 'default
       drupal_add_js(drupal_get_path('module', 'ding_reservation') . '/js/ding_reservation_scripts.js');
       $entity_id = $entity->localId;
       // Store ting entites in session, so they are easily accessed.
-      return array(array(
-        '#prefix' => '<div class="hidden reservation-link-ajax ting-object-id-' . $entity_id . '" id="reservation-' . $entity_id . '">',
-        '#suffix' => '</div>',
-        '#markup' => l(t('Reserve'), 'reservation/reserve/' . $entity_id, array('attributes' => array('class' => array('use-ajax')), 'absolute' => TRUE)),
-      ));
+      return array(
+        array(
+          '#theme' => 'link',
+          '#text' => '<i class="icon-white icon-ok"></i>&nbsp;' . t('Reserve'),
+          '#path' => 'reservation/reserve/' . $entity_id,
+          '#options' => array(
+            'attributes' => array(
+              'class' => array(
+                'use-ajax',
+                'reservation-link-ajax',
+                'ting-object-id-' . $entity_id,
+                'btn',
+                'btn-artesis-green',
+              ),
+              'id' => 'reservation-' . $entity_id,
+            ),
+            'html' => TRUE,
+            'absolute' => TRUE,
+          ),
+        ),
+      );
     }
   }
 }
