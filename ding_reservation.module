@@ -76,7 +76,7 @@ function ding_reservation_ding_entity_buttons($type, $entity, $widget = 'default
       drupal_add_library('system', 'drupal.ajax');
       drupal_add_library('system', 'jquery.form');
       drupal_add_js(drupal_get_path('module', 'ding_reservation') . '/js/ding_reservation_scripts.js');
-      $entity_id = $entity->localId;
+      $entity_id = $entity->getLocalId();
       // Store ting entites in session, so they are easily accessed.
       return array(array(
         '#prefix' => '<div class="hidden reservation-link-ajax ting-object-id-' . $entity_id . '" id="reservation-' . $entity_id . '">',
