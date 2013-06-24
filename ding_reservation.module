@@ -115,7 +115,7 @@ function ding_reservation_reserve_ajax($entity_id = '') {
   if (!empty($entity_id)) {
     $agency = variable_get('ting_agency', '');
     $entity = ting_get_object_request($agency . ':' . $entity_id);
-    if (is_object($entity) && $entity instanceof TingClientObject) {
+    if (is_object($entity) && $entity instanceof TingEntity) {
       $commands = array();
       $reservation_form = drupal_render(ding_provider_get_form('ding_reservation_reserve_form', new DingReservationReservableEntity($entity)));
       $commands[] = ajax_command_invoke('body', 'append', array($reservation_form));
