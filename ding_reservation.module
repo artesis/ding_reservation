@@ -961,7 +961,7 @@ class DingReservationReservableEntity implements DingReservationReservable {
   }
 
   public function getProviderId() {
-    return isset($this->entity->localId) ? $this->entity->localId : NULL;
+    return $this->entity->getLocalId();
   }
 
   public function getEntity() {
@@ -969,7 +969,6 @@ class DingReservationReservableEntity implements DingReservationReservable {
   }
 
   public function getTitle() {
-    return isset($this->entity->record['dc:title'][''][0]) ? $this->entity->record['dc:title'][''][0] : NULL;
+    return $this->entity->getTitle();
   }
 }
-
