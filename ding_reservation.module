@@ -89,6 +89,7 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
               'reservation-link-ajax',
               'ting-object-id-' . $entity_id,
               'btn',
+              'reservation',
               'btn-artesis-green',
             ),
             'id' => 'reservation-' . $entity_id,
