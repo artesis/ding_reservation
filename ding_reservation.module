@@ -357,6 +357,7 @@ function ding_reservation_reserve_form_callback($form, &$form_state) {
   }
 
   $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Reserve'), $html);
+  $response['#commands'] = array_merge($response['#commands'], artesis_backend_refresh_login());
 
   return $response;
 }
