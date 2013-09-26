@@ -358,6 +358,13 @@ function ding_reservation_reserve_form_callback($form, &$form_state) {
 
   $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Reserve'), $html);
 
+  // Update user box after reservation.
+  if (function_exists('artesis_backend_refresh_login')) {
+    $response['#commands'] = array_merge($response['#commands'], artesis_backend_refresh_login());
+  } elseif (module_exists('artesis_backend')) {
+    watchdog('ding_reservation', 'Dependent function artesis_backend_refresh_login doesn\'t exists in artesis_backend');
+  }
+
   return $response;
 }
 
