@@ -299,7 +299,15 @@ function ding_reservation_reserve_form_submit($form, &$form_state) {
       // @todo use profile
       if (!empty($reservation_result['branch']) && ding_provider_implements('reservation', 'branch_name')) {
         $branch_name = ding_provider_invoke('reservation', 'branch_name', $reservation_result['branch']);
-        drupal_set_message(t('"@title" reserved and will be available for pickup at @branch.', array('@title' => $reservable->getTitle(), '@branch' => $branch_name)));
+        drupal_set_message(
+          t(
+            '"@title" reserved and will be available for pickup at @branch.',
+            array(
+              '@title' => $reservable->getTitle(),
+              '@branch' => $branch_name,
+            )
+          )
+        );
       }
       else {
         drupal_set_message(t('"@title" reserved.', array('@title' => $reservable->getTitle())));
@@ -417,9 +425,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
   }
   foreach ($items as $id => $item) {
     $entity = $item->entity;
-    if (!is_object($entity)) {
-      $entity = ding_reservation_replace_entity($item);
-    }
 
     $pickup_branch = ding_provider_invoke('reservation', 'branch_name', $item->pickup_branch_id);
     switch ($type) {
@@ -479,7 +484,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
           '#type' => 'submit',
           '#submit' => array('ding_reservation_reservations_delete_submit'),
           '#reservation_id' => $item->id,
-          '#name' => 'delete-' . preg_replace('/\W/', '-', $item->id), // Need this for formAPI can tell buttons apart
+          '#name' => 'delete-' . str_replace(array(' ', ':'), array('__', '_'), $item->id), // Need this for formAPI can tell buttons apart
           '#value' => t('Delete'),
           '#options' => array('query' => $destination),
         );
@@ -544,7 +549,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
             'class' => 'pickup-branch',
           ),
           'ill_status' => array(
-            'data' => $item->ill_status ? t(check_plain($item->ill_status)) : '',
+            'data' => isset($item->ill_status) ? t(check_plain($item->ill_status)) : '',
             'class' => 'ill-status',
           ),
         );
@@ -587,6 +592,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
     $form['actions']['submit'] = array(
       '#submit' => array('ding_reservation_reservations_delete_submit'),
       '#type' => 'submit',
+      '#name' => 'delete_all',
       '#value' => t('Delete reservations'),
       '#attributes' => array(
         'class' => array('d-reservations-delete'),
@@ -665,12 +671,28 @@ function ding_reservation_replace_entity($item) {
 
 function ding_reservation_reservations_delete_submit($form, &$form_state) {
   global $user;
-  if (!empty($form_state['triggering_element']['#reservation_id'])) {
-    $reservations = array($form_state['triggering_element']['#reservation_id']);
+
+  // Delete all selected.
+  if (isset($form_state['input']['delete_all'])) {
+    $reservations = array_filter(array_values($form_state['input']['reservations']));
   }
+  // Delete one.
   else {
-    $reservations = array_filter($form_state['values']['reservations']);
+    $keys = array_keys($form_state['input']);
+    foreach ($keys as $key) {
+      if (stripos($key, 'delete-') !== FALSE) {
+        $reservations = array(
+          str_replace(
+            array('delete-', '__', '_'),
+            array('', ' ', ':'),
+            $key
+          )
+        );
+        break;
+      }
+    }
   }
+
   foreach ($reservations as $entity_id) {
     ding_provider_invoke('reservation', 'delete', $user, $entity_id);
   }
