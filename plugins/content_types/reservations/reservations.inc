@@ -1,9 +1,9 @@
 <?php
-
 /**
- * Plugins are described by creating a $plugin array which will be used
- * by the system that includes this file.
+ * @file
+ * User reservation list.
  */
+
 $plugin = array(
   'title' => t('User reservation list'),
   'description' => t('The current reservations for a user'),
@@ -14,7 +14,7 @@ $plugin = array(
 );
 
 /**
- * Render the block
+ * Render the block.
  */
 function ding_reservation_reservations_content_type_render($subtype, $conf, $panel_args, $context) {
   static $preload_reservations = TRUE;
@@ -32,12 +32,14 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
       $block->content = t('There are no reservations ready for pickup.');
       $form_id = 'ding_reservation_reservations_ready_form';
       break;
+
     default:
     case 'not_ready_for_pickup':
       $block->title = t('Reservations');
       $block->content = t('There are no reservations.');
       $form_id = 'ding_reservation_reservations_notready_form';
       break;
+
     case 'interlibrary_loans':
       $block->title = t('Interlibrary loans');
       $block->content = t('There are no interlibrary loans.');
@@ -73,7 +75,7 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
 }
 
 /**
- * Adding the admin form, to be able to control the required context
+ * Adding the admin form, to be able to control the required context.
  */
 function ding_reservation_reservations_content_type_edit_form($form, &$form_state) {
   $conf = $form_state['conf'];
@@ -91,7 +93,7 @@ function ding_reservation_reservations_content_type_edit_form($form, &$form_stat
 }
 
 /**
- * Submit handler for the admin form
+ * Submit handler for the admin form.
  */
 function ding_reservation_reservations_content_type_edit_form_submit(&$form, &$form_state) {
   foreach (element_children($form) as $key) {
