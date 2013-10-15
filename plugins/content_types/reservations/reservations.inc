@@ -20,7 +20,6 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
   static $preload_reservations = TRUE;
   $account = isset($context->data) ? $context->data : NULL;
   $preload_ids = array();
-  $items = array();
   $reservation_list = array();
 
   $block = new stdClass();
