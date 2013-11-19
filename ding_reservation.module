@@ -718,12 +718,24 @@ function ding_reservation_reservations_form_callback($form, &$form_state) {
     '#commands' => array(),
   );
 
-  $html = theme('status_messages');
-  $html .= drupal_render(drupal_get_form('ding_reservation_update_reservations_form', $user, $form_state['encoded_reservations']));
+  $selected = !empty($form_state['encoded_reservations']);
 
-  if ($html) {
-    $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Update reservations'), $html, array('refresh' => TRUE));
+  // Show "update" form.
+  if ($selected) {
+    $html = theme('status_messages');
+    $form = drupal_get_form('ding_reservation_update_reservations_form', $user, $form_state['encoded_reservations']);
+    $html .= drupal_render($form);
+
+    if ($html) {
+      $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Update reservations'), $html, array('refresh' => TRUE));
+    }
   }
+  // Show "no items" message.
+  else {
+    $html = t('Remember to mark one or more reservations before you update.');
+    $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Update reservations'), $html);
+  }
+
   return $response;
 }
 
