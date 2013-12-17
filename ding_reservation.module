@@ -846,7 +846,7 @@ function ding_reservation_update_reservations_form_callback($form, &$form_state)
  */
 function ding_reservation_default_options_branch($type, $name, $default, $options) {
   $create = ($type == 'create');
-  $allowed_branches = ($create ? array('' => 'Select') : array($default => t('No change'))) + (array) $options;
+  $allowed_branches = ($create ? array('' => 'Select') : array($default => $default . ' (' . t('Default branch') . ')' )) + (array) $options;
 
   $form[$name] = array(
     '#type' => 'select',
