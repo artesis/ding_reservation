@@ -404,7 +404,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
     case 'not_ready_for_pickup':
       $header = array(
         'title' => t('Title'),
-        'order_nr' => t('Order nr.'),
         'created' => t('Created date'),
         'expiry' => t('Expiry date'),
         'pickup_branch' => t('Pickup branch'),
@@ -492,10 +491,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
           'title' => array(
             'data' => array($entity ? ting_object_view($entity, 'user_list') : array('#markup' => $item->display_name)),
             'class' => 'title',
-          ),
-          'order_nr' => array(
-            'data' => ding_reservation_get_order_nr($item),
-            'class' => 'pickup-id',
           ),
           'created' => array(
             'data' => $item->created ? format_date(strtotime(check_plain($item->created)), 'custom', 'd/m/Y') : '',
@@ -638,23 +633,6 @@ function ding_reservation_get_pickup_id($item) {
   }
 
   return '';
-}
-
-/**
- * Get order id number.
- *
- * @param $item
- *   Reserved item object.
- * @return
- *   Order number, if any.
- */
-function ding_reservation_get_order_nr($item) {
-  if (!isset($item->pickup_order_id) && isset($item->order_id)) {
-    return $item->order_id;
-  }
-  else {
-    return t('On route') . ' ' . l('(?)', current_path(), array('attributes' => array('title' => t('The material is on route to the library. You will be notified when it is ready for pickup.'))));
-  }
 }
 
 /**
