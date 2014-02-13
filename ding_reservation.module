@@ -75,7 +75,7 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
     drupal_add_library('system', 'drupal.ajax');
     drupal_add_library('system', 'jquery.form');
     drupal_add_js(drupal_get_path('module', 'ding_reservation') . '/js/ding_reservation_scripts.js');
-    $entity_id = $entity->getLocalId();
+    $entity_id = $entity->ding_entity_id;
     // Store ting entites in session, so they are easily accessed.
     return array(
       array(
@@ -113,8 +113,7 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
  */
 function ding_reservation_reserve_ajax($entity_id = '') {
   if (!empty($entity_id)) {
-    $agency = variable_get('ting_agency', '');
-    $entity = ting_get_object_request($agency . ':' . $entity_id);
+    $entity = ting_get_object_request($entity_id);
     if (is_object($entity) && $entity instanceof TingEntity) {
       $commands = array();
       $reservation_form = drupal_render(ding_provider_get_form('ding_reservation_reserve_form', new DingReservationReservableEntity($entity)));
@@ -138,7 +137,7 @@ function ding_reservation_reserve_ajax($entity_id = '') {
  */
 function ding_reservation_command_init_behavior($entity_id = '') {
   if (!empty($entity_id)) {
-    return array('command' => 'enable_reservation', 'data' => $entity_id);
+    return array('command' => 'enable_reservation', 'data' => urlencode($entity_id));
   }
 }
 
@@ -424,6 +423,10 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
   }
   foreach ($items as $id => $item) {
     $entity = $item->entity;
+
+    if (!is_object($entity)) {
+      $entity = ding_reservation_replace_entity($item);
+    }
 
     $pickup_branch = ding_provider_invoke('reservation', 'branch_name', $item->pickup_branch_id);
     switch ($type) {
