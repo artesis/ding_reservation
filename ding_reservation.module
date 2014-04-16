@@ -364,7 +364,7 @@ function ding_reservation_reserve_form_callback($form, &$form_state) {
 
   $response['#commands'][] = ajax_command_ding_popup('ding_reservation', t('Reserve'), $html);
   // Allow other modules to modify the command set.
-  $response['#commands'] = module_invoke_all('preprocess_ajax_commands', $response['#commands']);
+  drupal_alter('artesis_ajax_commands', $response['#commands']);
 
   return $response;
 }
