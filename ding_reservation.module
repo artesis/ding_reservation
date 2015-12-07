@@ -97,7 +97,7 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
           'html' => TRUE,
           'absolute' => TRUE,
         ),
-        '#weight' => -90,
+        '#weight' => 106,
       ),
     );
   }
