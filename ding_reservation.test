@@ -22,8 +22,6 @@ class DingReservationFunctionalTest extends DingPopupTestCase {
     // such a thing exists, we're using ting.
     variable_set('ting_agency', '710100');
     variable_set('ting_search_url', 'http://opensearch.addi.dk/1.0/');
-    variable_set('ting_scan_url', 'http://openscan.addi.dk/1.5/');
-    variable_set('ting_spell_url', 'http://openspell.addi.dk/1.2/');
     variable_set('ting_recommendation_url', 'http://openadhl.addi.dk/1.1/');
   }
 
