@@ -106,25 +106,80 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
 /**
  * Ajax entry callback.
  *
- * Perform ajax-specific commands for forms retrieval and displacement.
+ * Try to reserve the material, if the user is not logged in trigger a ajax
+ * login.
  *
- * @param $entity_id
- *   Ting object id.
+ * @param TingEntity $entity
+ *   Ting entity object.
+ * @param DingReservationReservable $reservable
+ *   Object with information about the entity to reserve. Used to make
+ *   reservation of periodical, where volume and issue is part of the
+ *   reservation.
+ *
+ * @return array
+ *   Render array with Ajax commands.
  */
-function ding_reservation_reserve_ajax($entity_id = '') {
-  if (!empty($entity_id)) {
-    $entity = ting_get_object_request($entity_id);
-    if (is_object($entity) && $entity instanceof TingEntity) {
-      $commands = array();
-      $reservation_form = drupal_render(ding_provider_get_form('ding_reservation_reserve_form', new DingReservationReservableEntity($entity)));
-      $commands[] = ajax_command_invoke('body', 'append', array($reservation_form));
-      $commands[] = ding_reservation_command_init_behavior($entity_id);
-      return array(
-        '#type' => 'ajax',
-        '#commands' => $commands,
-      );
+function ding_reservation_reserve_ajax($entity, $reservable = NULL) {
+  $commands = array();
+
+  $entity = ding_entity_load($entity, 'ting_object');
+  // Check if the logged in user is a library user.
+  global $user;
+  if (!user_is_logged_in()) {
+    // Trigger log-in (the reservation link will be triggered on success).
+    $commands[] = ajax_command_ding_user_authenticate('');
+  }
+  elseif (!ding_user_is_provider_user($user)) {
+    // Error not library user.
+    $commands[] = ajax_command_ding_popup('ding_reservation', t('Error'), '<p>' . t('Only library user can make reservations.') . '</p>');
+  }
+  elseif (!(is_object($entity) && $entity instanceof TingEntity)) {
+    // Error not ting entity.
+    $commands[] = ajax_command_ding_popup('ding_reservation', t('Error'), '<p>' . t('Unable to load information about the material.') . '</p>');
+  }
+  else {
+    // Check if reservable object was paste.
+    if (is_null($reservable)) {
+      // If no object passed assume "normal" reservation (not periodical).
+      $reservable = new DingReservationReservableEntity($entity);
+    }
+
+    // Try to make reservation.
+    try {
+      // Check if user have preferred branch and interest period, if so
+      // submit the reservation form. If not display another form for with
+      // the options to select branch and period.
+      $defaults = ding_provider_invoke('reservation', 'default_options', $user);
+      $matches = preg_grep("/preferred_branch$/", array_keys($defaults));
+      if (empty($defaults[array_shift($matches)])) {
+        $form = ding_provider_get_form('ding_reservation_reserve_form', $reservable, FALSE);
+        $commands[] = ajax_command_ding_popup('ding_reservation', t('Reservation'), render($form));
+      }
+      else {
+        $form_state = array('values' => array());
+        drupal_form_submit('ding_reservation_reserve_form', $form_state, $reservable);
+
+        // Return any status messages set by the form.
+        $commands[] = ajax_command_ding_popup('ding_reservation', t('Reservation'), theme('status_messages'));
+      }
+    }
+    catch (DingProviderAuthException $exception) {
+      // The form may have thrown an Auth exception, so display login. (the
+      // reservation link will be triggered on success).
+      $commands[] = ajax_command_ding_user_authenticate('');
+    }
+    catch (Exception $exception) {
+      // The form may have thrown an auth exception as the login may have
+      // timed-out (the reservation link will be triggered on success).
+      $commands[] = ajax_command_ding_popup('ding_reservation', t('Error'), '<p>' . t('Unknown error in reservation, please contact the library.') . '</p>');
+
+      // Log exception.
+      watchdog_exception('ding_reservation', $exception);
     }
   }
+
+  // Return the ajax commands as an render array.
+  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -180,7 +235,7 @@ function ding_reservation_forms($form_id, $args) {
  * Note that this form relies on form caching, which is triggered by
  * ajaxifying the submit button.
  */
-function ding_reservation_reserve_form($form, &$form_state, $reservable, $hide_options = TRUE) {
+function ding_reservation_reserve_form($form, &$form_state, $reservable, $hide_options = FALSE) {
   global $user;
   if (!($reservable instanceof DingReservationReservable)) {
     // Assume that we were given a reservable entity.
@@ -188,13 +243,6 @@ function ding_reservation_reserve_form($form, &$form_state, $reservable, $hide_o
   }
   $entity = $reservable->getEntity();
   $uri = ding_entity_uri('ding_entity', $entity);
-
-  // If HTTPS is enabled we are redirected to the reservation form page after
-  // logging in is done and we need to save the item user wanted to reserve
-  // to reserve it again automatically.
-  if (variable_get('https', FALSE) && !$user->uid) {
-    setcookie('entityReserveOnce', $entity->localId, 0, '/');
-  }
 
   // We post to our own path as we might want to rebuild the form.
   // @todo move *_get_destination to ding_base?
@@ -212,18 +260,35 @@ function ding_reservation_reserve_form($form, &$form_state, $reservable, $hide_o
     '#value' => array(),
   );
 
+  // Helps decide if the provider options should be displayed in the reserve
+  // form. If the user have default value these are used to make a quicker
+  // reservation process.
   $hide_options = !isset($form_state['options_hidden']) ? $hide_options : FALSE;
   $form_state['options_hidden'] = $hide_options;
 
-  if (ding_provider_implements('reservation', 'options') && $provider_form = ding_provider_invoke('reservation', 'options', 'create', $user, $reservable)) {
-    $form['provider_options'] = $provider_form + array(
-      '#tree' => TRUE,
-    );
+  if (!$hide_options) {
+    if (ding_provider_implements('reservation', 'options') && $provider_form = ding_provider_invoke('reservation', 'options', $user)) {
+      $form['provider_options'] = $provider_form + array('#tree' => TRUE);
+
+      // The normal reserve button and the reserve for with provider options are
+      // the same form. But DDBasic hides the reserve buttons until availability
+      // have been confirmed. So we need to add a class to the form to make it
+      // visible.
+      $form['#attributes'] = array(
+        'class' => array('reservable'),
+      );
+    }
   }
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Reserve'),
+    '#attributes' => array(
+      'class' => array(
+        'action-button',
+        'reserve-button',
+      ),
+    ),
     '#ajax' => array(
       'callback' => 'ding_reservation_reserve_form_callback',
       'wrapper' => 'ding-reservation-reserve-form',
@@ -241,12 +306,11 @@ function ding_reservation_reserve_form_validate($form, &$form_state) {
   if (ding_provider_implements('reservation', 'options_validate')) {
     $res = ding_provider_invoke('reservation', 'options_validate', 'create', $user, $form_state['values']['reservable'], $form_state['values']['provider_options']);
     // No valudation options returned by provider.
-
     if (is_null($res)) {
       return;
     }
 
-    /**
+    /*
      * We cannot set the value of the individual provider form elements, as
      * they might not have been show, and thus not exist. However, setting the
      * value of the parent element to an associative array gives the same end
@@ -288,7 +352,7 @@ function ding_reservation_reserve_form_validate($form, &$form_state) {
 function ding_reservation_reserve_form_submit($form, &$form_state) {
   global $user;
   if (ding_provider_implements('reservation', 'options_submit')) {
-    ding_provider_invoke('reservation', 'options_submit', 'create', $user, $form_state['values']['reservable'], $form_state['values']['provider_options']);
+    ding_provider_invoke('reservation', 'options_submit', $user, $form_state['values']['provider_options']);
   }
   if ($form_state['values']['reservable']) {
     $reservable = $form_state['values']['reservable'];
@@ -298,15 +362,8 @@ function ding_reservation_reserve_form_submit($form, &$form_state) {
       // @todo use profile
       if (!empty($reservation_result['branch']) && ding_provider_implements('reservation', 'branch_name')) {
         $branch_name = ding_provider_invoke('reservation', 'branch_name', $reservation_result['branch']);
-        drupal_set_message(
-          t(
-            '"@title" reserved and will be available for pickup at @branch.',
-            array(
-              '@title' => $reservable->getTitle(),
-              '@branch' => $branch_name,
-            )
-          )
-        );
+        $reservable_title = htmlspecialchars_decode($reservable->getTitle());
+        drupal_set_message(t('"@title" reserved and will be available for pickup at @branch.', array('@title' => $reservable_title, '@branch' => $branch_name)));
       }
       else {
         drupal_set_message(t('"@title" reserved.', array('@title' => $reservable->getTitle())));
@@ -378,6 +435,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
   $provider = ding_provider_get_provider_module_name('reservation');
   $able_to_delete = variable_get($provider . '_enable_reservation_deletion', FALSE);
   $alma_rule = (($type == 'ready_for_pickup' || $type == 'interlibray_loans' || $type == 'not_ready_for_pickup') && $provider == 'alma');
+  $fbs_rule = (($type == 'ready_for_pickup' || $type == 'interlibray_loans' || $type == 'not_ready_for_pickup') && $provider == 'fbs');
   $openruth_rule = ($type == 'not_ready_for_pickup' && $provider == 'openruth');
   $empty_message = '';
   $header = array();
@@ -394,6 +452,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       );
       uasort($items, 'ding_reservation_sort_queue_by_pickup_date');
       break;
+
     case 'not_ready_for_pickup':
       $header = array(
         'title' => t('Title'),
@@ -405,6 +464,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       );
       uasort($items, 'ding_reservation_sort_queue_by_queue_number');
       break;
+
     case 'interlibrary_loans':
       $header = array(
         'title' => t('Title'),
@@ -522,6 +582,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
         $empty_message = t('No Reservations');
         break;
+
       case 'interlibrary_loans':
         $options[$item->id] = array(
           'title' => array(
@@ -558,7 +619,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
         break;
     }
   }
-  if ($alma_rule || $openruth_rule) {
+  if ($alma_rule || $openruth_rule || $fbs_rule) {
     $form['reservations'] = array(
       '#type' => 'tableselect_form',
       '#header' => $header,
@@ -582,7 +643,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
   // Not every type of loan can be deleted.
   // @see Lines 352 & 353 for rules.
-  if ($alma_rule || $openruth_rule) {
+  if ($alma_rule || $openruth_rule || $fbs_rule) {
     $form['actions']['submit'] = array(
       '#submit' => array('ding_reservation_reservations_delete_submit'),
       '#type' => 'submit',
