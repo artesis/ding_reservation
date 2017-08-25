@@ -517,7 +517,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
             'class' => 'pickup-branch',
           ),
           'operations' => array(
-            'data' => ($able_to_delete && $provider != 'openruth') ? $delete_button : '',
+            'data' => (!empty($able_to_delete) && $provider != 'openruth') ? $delete_button : '',
             'class' => 'operations',
           ),
         );
@@ -566,7 +566,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
             'class' => 'queue-number',
           ),
           'operations' => array(
-            'data' => ($able_to_delete) ? $delete_button : '',
+            'data' => (!empty($able_to_delete)) ? $delete_button : '',
             'class' => 'operations',
           ),
         );
@@ -643,7 +643,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
   // Not every type of loan can be deleted.
   // @see Lines 352 & 353 for rules.
-  if ($alma_rule || $openruth_rule || $fbs_rule) {
+  if ($alma_rule || $openruth_rule || $fbs_rule && $able_to_delete) {
     $form['actions']['submit'] = array(
       '#submit' => array('ding_reservation_reservations_delete_submit'),
       '#type' => 'submit',
