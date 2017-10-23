@@ -613,6 +613,14 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       '#_choice_last' => TRUE,
       '#_select_all_label' => t('Select all'),
     );
+
+    if ($type == 'ready_for_pickup') {
+      // Disabling checkboxes for "ready_for_pickup" items deletion.
+      $form['reservations']['#js_select'] = FALSE;
+      foreach ($form['reservations']['#options'] as $key => $option) {
+        $form['reservations']['#options'][$key]['#disabled'] = TRUE;
+      }
+    }
   }
   else {
     $form['reservations'] = array(
