@@ -448,7 +448,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
         'created' => t('Created date'),
         'pickup_date' => t('Pickup date'),
         'pickup_branch' => t('Pickup branch'),
-        'operations' => '',
       );
       uasort($items, 'ding_reservation_sort_queue_by_pickup_date');
       break;
@@ -485,16 +484,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
     $pickup_branch = ding_provider_invoke('reservation', 'branch_name', $item->pickup_branch_id);
     switch ($type) {
       case 'ready_for_pickup':
-        $delete_button = array(
-          '#prefix' => '<div class="delete-reservation">',
-          '#suffix' => '</div>',
-          '#type' => 'submit',
-          '#submit' => array('ding_reservation_reservations_delete_submit'),
-          '#reservation_id' => $item->id,
-          '#name' => 'delete-' . preg_replace('/\W/', '-', $item->id), // Need this for formAPI can tell buttons apart
-          '#value' => t('Delete'),
-          '#options' => array('query' => $destination),
-        );
         $options[$item->id] = array(
           'title' => array(
             'data' => array($entity ? ting_object_view($entity, 'user_list') : array('#markup' => $item->display_name)),
@@ -515,10 +504,6 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
           'pickup_branch' => array(
             'data' => $pickup_branch ? check_plain($pickup_branch) : '',
             'class' => 'pickup-branch',
-          ),
-          'operations' => array(
-            'data' => (!empty($able_to_delete) && $provider != 'openruth') ? $delete_button : '',
-            'class' => 'operations',
           ),
         );
 
@@ -643,19 +628,19 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
   // Not every type of loan can be deleted.
   // @see Lines 352 & 353 for rules.
-  if ($alma_rule || $openruth_rule || $fbs_rule && $able_to_delete) {
-    $form['actions']['submit'] = array(
-      '#submit' => array('ding_reservation_reservations_delete_submit'),
-      '#type' => 'submit',
-      '#name' => 'delete_all',
-      '#value' => t('Delete reservations'),
-      '#attributes' => array(
-        'class' => array('d-reservations-delete'),
-      ),
-    );
-  }
-
   if ($type == 'not_ready_for_pickup') {
+    if ($alma_rule || $openruth_rule || $fbs_rule && $able_to_delete) {
+      $form['actions']['submit'] = [
+        '#submit' => ['ding_reservation_reservations_delete_submit'],
+        '#type' => 'submit',
+        '#name' => 'delete_all',
+        '#value' => t('Delete reservations'),
+        '#attributes' => [
+          'class' => ['d-reservations-delete'],
+        ],
+      ];
+    }
+
     $form['actions']['update'] = array(
       '#type' => 'submit',
       /* '#submit' => array('ding_reservation_update_reservation_form'), */
@@ -724,7 +709,7 @@ function ding_reservation_reservations_delete_submit($form, &$form_state) {
             array('delete-', '__', '_'),
             array('', ' ', ':'),
             $key
-          )
+          ),
         );
         break;
       }
