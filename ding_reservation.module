@@ -697,7 +697,13 @@ function ding_reservation_get_pickup_id($item) {
  */
 function ding_reservation_replace_entity($item) {
   $provider = _ding_provider_get_provider();
-  return call_user_func($provider['reservation']['module'] . '_replace_entity', $item);
+  $function = $provider['reservation']['module'] . '_replace_entity';
+
+  if (function_exists($function)) {
+    return call_user_func($provider['reservation']['module'] . '_replace_entity', $item);
+  }
+
+  return FALSE;
 }
 
 function ding_reservation_reservations_delete_submit($form, &$form_state) {
