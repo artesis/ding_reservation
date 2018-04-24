@@ -1026,6 +1026,26 @@ function ding_reservation_init() {
 }
 
 /**
+ * Get amount of reservations of the user.
+ *
+ * @param $reservations
+ * @param $type
+ * @return int
+ * */
+function ding_reservation_count($reservations, $type) {
+  if (!empty($type)) {
+    return count($reservations[$type]);
+  }
+
+  $count = 0;
+  foreach ($reservations as $type => $reservation) {
+    $count += count($reservation);
+  }
+
+  return $count;
+}
+
+/**
  * Interface for reservable items.
  */
 interface DingReservationReservable {
