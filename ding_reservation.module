@@ -5,6 +5,13 @@
  * Handles display and creation/deletion of reservations for users.
  */
 
+/**
+ * Define reservation types.
+ */
+define('DING_RESERVATION_READY', 'ready_for_pickup');
+define('DING_RESERVATION_NOT_READY', 'not_ready_for_pickup');
+define('DING_RESERVATION_INTERLIBRARY_LOANS', 'interlibrary_loans');
+
 // Default interest period is ~six months.
 define('DING_RESERVATION_DEFAULT_INTEREST_PERIOD', 183 * 86400);
 
