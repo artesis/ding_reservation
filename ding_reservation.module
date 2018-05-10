@@ -448,7 +448,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
   $header = array();
 
   switch ($type) {
-    case 'ready_for_pickup':
+    case DING_RESERVATION_READY:
       $header = array(
         'title' => t('Title'),
         'pickup_id' => t('Pickup id'),
@@ -459,7 +459,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       uasort($items, 'ding_reservation_sort_queue_by_pickup_date');
       break;
 
-    case 'not_ready_for_pickup':
+    case DING_RESERVATION_NOT_READY:
       $header = array(
         'title' => t('Title'),
         'created' => t('Created date'),
@@ -471,7 +471,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       uasort($items, 'ding_reservation_sort_queue_by_queue_number');
       break;
 
-    case 'interlibrary_loans':
+    case DING_RESERVATION_INTERLIBRARY_LOANS:
       $header = array(
         'title' => t('Title'),
         'created' => t('Created date'),
@@ -481,8 +481,9 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       );
       break;
   }
-  foreach ($items as $id => $item) {
-    $entity = $item->entity;
+  foreach ($items as $item) {
+    $id = $item->__get('ding_entity_id');
+    $entity = ding_entity_load($id);
 
     if (!is_object($entity) || !preg_match('/([0-9]+)-([a-z]+):(\S+)/', $entity->ding_entity_id)) {
       $entity = ding_reservation_replace_entity($item);
@@ -490,7 +491,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
     $pickup_branch = ding_provider_invoke('reservation', 'branch_name', $item->pickup_branch_id);
     switch ($type) {
-      case 'ready_for_pickup':
+      case DING_RESERVATION_READY:
         $options[$item->id] = array(
           'title' => array(
             'data' => array($entity ? ting_object_view($entity, 'user_list') : array('#markup' => $item->display_name)),
@@ -525,7 +526,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
         $empty_message = t('No reservations ready for pickup');
         break;
-      case 'not_ready_for_pickup':
+      case DING_RESERVATION_NOT_READY:
         $delete_button = array(
           '#prefix' => '<div class="delete-reservation">',
           '#suffix' => '</div>',
@@ -575,7 +576,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
         $empty_message = t('No Reservations');
         break;
 
-      case 'interlibrary_loans':
+      case DING_RESERVATION_INTERLIBRARY_LOANS:
         $options[$item->id] = array(
           'title' => array(
             'data' => array($entity ? ting_object_view($entity, 'user_list') : array('#markup' => $item->display_name)),
@@ -797,7 +798,7 @@ function ding_reservation_update_reservations_form($form, $form_state, $account,
     '#value' => $ids,
   );
 
-  if (ding_provider_implements('reservation', 'options') && $provider_form = ding_provider_invoke('reservation', 'options', 'update', $user, NULL)) {
+  if (ding_provider_implements('reservation', 'options') && $provider_form = ding_provider_invoke('reservation', 'options', $user, NULL)) {
     $form['provider_options'] = $provider_form + array(
       '#tree' => TRUE,
     );
@@ -877,66 +878,71 @@ function ding_reservation_update_reservations_form_callback($form, &$form_state)
 }
 
 /**
- * Default options handling.
- *
- * Reservation providers may use these to use standard implementations of
- * widgets like pickup branch and get much logic for free.
- */
-
-/**
  * Create a pickup branch selector.
  *
  * Returns form element(s) for selecting a pickup branch.
+ *
+ * @param string $name
+ *   The name of the form element to build.
+ * @param string $default
+ *   The default branch option name eg. hb => Hovedbiblioteket.
+ * @param array $options
+ *   The branches that should be available for selection in the form element.
+ *
+ * @return array
+ *   Form element with a selection input type to select pickup branch.
  */
-function ding_reservation_default_options_branch($type, $name, $default, $options) {
-  $create = ($type == 'create');
-  if (!isset($options[$default])) {
-    $options = ($create ? array('' => 'Select') : array($default => $default . ' (' . t('Default branch') . ')' )) + (array) $options;
-  }
+function ding_reservation_default_options_branch($name, $default, $options) {
+  $form = array();
+  $allowed_branches = array('' => t('Select')) + $options;
 
   $form[$name] = array(
     '#type' => 'select',
     '#title' => t('Select branch'),
-    '#options' => $options,
-    '#default_value' => $default,
+    '#options' => $allowed_branches,
+    '#default_value' => !empty($default) ? $default : '',
   );
-  if ($create) {
+
+  if (empty($default)) {
     $form[$name . 'description'] = array(
       '#markup' => '<p>' . t('In order to make quick reservations, you must select a default pickup branch.') . '</p>',
     );
   }
+
   return $form;
 }
 
-
 /**
- * Create an interest period selector.
+ * Create an interest period form select element.
  *
- * Returns form element(s) for selecting an interest period.
+ * @param string $name
+ *   The name of the form element to build.
+ * @param int $default
+ *   The pre-selected value.
+ * @param array $options
+ *   The periods that should be available for selection in the form element.
+ *
+ * @return array
+ *   Form element with a selection input type to select interest period.
  */
-function ding_reservation_interest_period_selector($type, $name, $default, $options) {
-  $create = ($type == 'create');
+function ding_reservation_interest_period_selector($name, $default, $options) {
+  $form = array();
 
-  // Used for options translation.
+  // Used to enable translation of options.
   if (is_array($options)) {
     foreach ($options as $k => $v) {
       $options[$k] = t(check_plain($v));
     }
   }
 
-  $allowed_periods = ($create ? array('' => 'Select') : array('' => t('No change'))) + (array) $options;
-
+  $allowed_periods = array('' => t('Select')) + $options;
   $form[$name] = array(
     '#type' => 'select',
     '#title' => t('Select interest period'),
     '#options' => $allowed_periods,
-    '#default_value' => $default,
+    '#default_value' => !empty($default) ? $default : '',
   );
-  if ($create) {
-    $form[$name . 'description'] = array(
-      '#markup' => '<p>' . t('Select an interest period.') . '</p>',
-    );
-  }
+
   return $form;
 }
 

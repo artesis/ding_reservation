@@ -29,26 +29,26 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
   $list = ding_provider_invoke_page('reservation', 'list', $account);
   $items = array();
   switch ($conf['reservation_type_list']) {
-    case 'ready_for_pickup':
+    case DING_RESERVATION_READY:
       $block->title = t('Reservations ready for pickup');
       $block->content = t('There are no reservations ready for pickup.');
       $form_id = 'ding_reservation_reservations_ready_form';
-      $items = $list['DING_RESERVATION_READY'];
+      $items = $list[DING_RESERVATION_READY];
       break;
 
     default:
-    case 'not_ready_for_pickup':
+    case DING_RESERVATION_NOT_READY:
       $block->title = t('Reservations');
       $block->content = t('There are no reservations.');
       $form_id = 'ding_reservation_reservations_notready_form';
-      $items = $list['DING_RESERVATION_NOT_READY'];
+      $items = $list[DING_RESERVATION_NOT_READY];
       break;
 
-    case 'interlibrary_loans':
+    case DING_RESERVATION_INTERLIBRARY_LOANS:
       $block->title = t('Interlibrary loans');
       $block->content = t('There are no interlibrary loans.');
       $form_id = 'ding_reservation_reservations_ill';
-      $items = $list['DING_RESERVATION_INTERLIBRARY_LOANS'];
+      $items = $list[DING_RESERVATION_INTERLIBRARY_LOANS];
   }
 
   foreach ($items as $item) {
@@ -56,14 +56,14 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
       $preload_ids[] = $item->__get('ding_entity_id');
 
       if (isset($conf['reservation_type_list'])) {
-        $status = $item->__get('ready_for_pickup');
-        $ready_for_pickup = $conf['reservation_type_list'] == 'ready_for_pickup' && $status;
-        $note_ready_for_pickup = $conf['reservation_type_list'] == 'not_ready_for_pickup' && !$status;
+        $status = $item->__get(DING_RESERVATION_READY);
+        $ready_for_pickup = $conf['reservation_type_list'] == DING_RESERVATION_READY && $status;
+        $not_ready_for_pickup = !$status;
 
         $ill_status = $item->__get('ill_status');
-        $interlibrary_loan = $conf['reservation_type_list'] == 'interlibrary_loans' && !empty($ill_status);
+        $interlibrary_loan = $conf['reservation_type_list'] == DING_RESERVATION_INTERLIBRARY_LOANS && !empty($ill_status);
 
-        if ($ready_for_pickup || $note_ready_for_pickup || $interlibrary_loan) {
+        if ($ready_for_pickup || $not_ready_for_pickup || $interlibrary_loan) {
           $reservation_list[] = $item;
         }
       }
