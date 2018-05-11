@@ -441,9 +441,9 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
   $destination = drupal_get_destination();
   $provider = ding_provider_get_provider_module_name('reservation');
   $able_to_delete = variable_get($provider . '_enable_reservation_deletion', FALSE);
-  $alma_rule = (($type == 'ready_for_pickup' || $type == 'interlibray_loans' || $type == 'not_ready_for_pickup') && $provider == 'alma');
-  $fbs_rule = (($type == 'ready_for_pickup' || $type == 'interlibray_loans' || $type == 'not_ready_for_pickup') && $provider == 'fbs');
-  $openruth_rule = ($type == 'not_ready_for_pickup' && $provider == 'openruth');
+  $alma_rule = (($type == DING_RESERVATION_READY || $type == DING_RESERVATION_INTERLIBRARY_LOANS || $type == DING_RESERVATION_NOT_READY) && $provider == 'alma');
+  $fbs_rule = (($type == DING_RESERVATION_READY || $type == DING_RESERVATION_INTERLIBRARY_LOANS || $type == DING_RESERVATION_NOT_READY) && $provider == 'fbs');
+  $openruth_rule = ($type == DING_RESERVATION_NOT_READY && $provider == 'openruth');
   $empty_message = '';
   $header = array();
 
@@ -622,7 +622,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
       '#_select_all_label' => t('Select all'),
     );
 
-    if ($type == 'ready_for_pickup') {
+    if ($type == DING_RESERVATION_READY) {
       // Disabling checkboxes for "ready_for_pickup" items deletion.
       $form['reservations']['#js_select'] = FALSE;
       foreach ($form['reservations']['#options'] as $key => $option) {
@@ -644,7 +644,7 @@ function ding_reservation_reservations_form($form, &$form_state, $items = array(
 
   // Not every type of loan can be deleted.
   // @see Lines 352 & 353 for rules.
-  if ($type == 'not_ready_for_pickup') {
+  if ($type == DING_RESERVATION_NOT_READY) {
     if ($alma_rule || $openruth_rule || $fbs_rule && $able_to_delete) {
       $form['actions']['submit'] = [
         '#submit' => ['ding_reservation_reservations_delete_submit'],
