@@ -127,9 +127,25 @@ function ding_reservation_ding_entity_buttons($type, $entity) {
  *   Render array with Ajax commands.
  */
 function ding_reservation_reserve_ajax($entity, $reservable = NULL) {
+  $entity = ding_entity_load($entity, 'ting_object');
+
+  // Disallow direct browser access.
+  //
+  // This would properly redirect to item page when dealing with wayf/saml
+  // after login redirects.
+  //
+  // The wayf/saml login logic relies on drupal_get_destination(), so when
+  // a ding_popup login is initiated the referer would be the ajax route
+  // which is intended to be used only during ajax requests and is not suitable
+  // as redirect destination after wayf authentication. Therefore, redirect
+  // the user to item page instead.
+  $request_method = $_SERVER['REQUEST_METHOD'];
+  if ('GET' == $request_method) {
+    drupal_goto('/search/ting/' . $entity->getAcIdentifier());
+  }
+
   $commands = array();
 
-  $entity = ding_entity_load($entity, 'ting_object');
   // Check if the logged in user is a library user.
   global $user;
   if (!user_is_logged_in()) {
