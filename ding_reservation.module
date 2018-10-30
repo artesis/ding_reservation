@@ -1069,7 +1069,7 @@ function ding_reservation_init() {
  * @param $type
  * @return int
  * */
-function ding_reservation_count($reservations, $type) {
+function ding_reservation_count($reservations, $type = '') {
   if (!empty($type)) {
     return count($reservations[$type]);
   }
