@@ -15,6 +15,7 @@ $plugin = array(
 
 /**
  * Render the block.
+ * @throws DingProviderUserException
  */
 function ding_reservation_reservations_content_type_render($subtype, $conf, $panel_args, $context) {
   static $preload_reservations = TRUE;
@@ -67,6 +68,9 @@ function ding_reservation_reservations_content_type_render($subtype, $conf, $pan
           $reservation_list[] = $item;
         }
       }
+    }
+    elseif (!empty($item->__get('title'))) {
+      $reservation_list[] = $item;
     }
   }
   // Preload all ting objects.
